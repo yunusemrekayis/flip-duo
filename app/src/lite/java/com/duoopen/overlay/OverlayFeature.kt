@@ -28,4 +28,7 @@ object OverlayFeature {
     fun refreshShizuku() = Unit
     fun foldWallpaperActive(context: Context): Boolean = false
     fun angleFeedStatus(): String = ""
+    const val STAY_AWAKE_ON_FOLD = "stay_awake_on_fold_key"
+    fun foldLockValue(): String? = null
+    fun setKeepAppsOnFold(context: Context, on: Boolean): Boolean = false
 }

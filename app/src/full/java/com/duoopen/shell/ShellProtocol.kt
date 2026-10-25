@@ -14,6 +14,8 @@ object ShellProtocol {
     const val STOP_ANGLES = 4
     /** → Bundle{state, lines, parsed, rejected, last, angle} */
     const val ANGLE_STATUS = 5
+    /** in: verb (get/put/delete), value (put only) → Bundle{ok, value, error}; Samsung's system fold_lock_behavior */
+    const val FOLD_LOCK = 6
 
     /** callback: float angle, long uptimeMs */
     const val CB_ANGLE = 1

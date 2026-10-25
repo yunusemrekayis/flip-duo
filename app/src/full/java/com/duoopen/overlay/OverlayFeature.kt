@@ -59,4 +59,36 @@ object OverlayFeature {
 
     /** Status of the continuous-angle reader, from the running service. */
     fun angleFeedStatus(): String = FoldOverlayService.instance?.angleFeedStatus() ?: "Service not running"
+
+    // ---- Keep apps on when folded ------------------------------------------
+
+    const val STAY_AWAKE_ON_FOLD = "stay_awake_on_fold_key"
+    private const val FOLD_LOCK_ORIGINAL = "foldLockOriginal"
+    private val FOLD_LOCK_VALUES = setOf("sleep_on_fold_key", "selective_stay_awake_key", STAY_AWAKE_ON_FOLD)
+
+    /** Samsung's current fold-lock value ("null" when never set); null when Shizuku isn't ready. */
+    fun foldLockValue(): String? =
+        ShizukuBridge.foldLock("get")?.takeIf { it.getBoolean("ok") }?.getString("value")
+
+    /**
+     * On: remember Samsung's value, then keep the screen and app awake on
+     * folding so the app carries on on the cover screen. Off: put the
+     * remembered value back. False if Shizuku refused.
+     */
+    fun setKeepAppsOnFold(context: Context, on: Boolean): Boolean {
+        val prefs = context.getSharedPreferences("duo_open", Context.MODE_PRIVATE)
+        val result = if (on) {
+            if (!prefs.contains(FOLD_LOCK_ORIGINAL)) {
+                val original = foldLockValue() ?: return false
+                prefs.edit().putString(FOLD_LOCK_ORIGINAL, original).commit()
+            }
+            ShizukuBridge.foldLock("put", STAY_AWAKE_ON_FOLD)
+        } else {
+            val original = prefs.getString(FOLD_LOCK_ORIGINAL, null) ?: return true
+            if (original in FOLD_LOCK_VALUES) ShizukuBridge.foldLock("put", original) else ShizukuBridge.foldLock("delete")
+        }
+        val ok = result?.getBoolean("ok") == true
+        if (ok && !on) prefs.edit().remove(FOLD_LOCK_ORIGINAL).apply()
+        return ok
+    }
 }

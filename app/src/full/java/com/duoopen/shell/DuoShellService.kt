@@ -109,9 +109,44 @@ class DuoShellService : Binder() {
                 out.writeNoException()
                 out.writeBundle(reader?.status() ?: Bundle().apply { putString("state", "not started") })
             }
+            ShellProtocol.FOLD_LOCK -> {
+                val verb = data.readString() ?: "get"
+                val value = data.readString()
+                out.writeNoException()
+                out.writeBundle(foldLock(verb, value))
+            }
             else -> return super.onTransact(code, data, reply, flags)
         }
         return true
+    }
+
+    // ---- fold lock ---------------------------------------------------------
+
+    /**
+     * Samsung's "what happens when you fold" setting (system fold_lock_behavior:
+     * sleep_on_fold_key / selective_stay_awake_key / stay_awake_on_fold_key).
+     * Only the shell may write this non-public key. Technique from Duo Fold Live.
+     */
+    private fun foldLock(verb: String, value: String?): Bundle = Bundle().apply {
+        try {
+            require(verb in setOf("get", "put", "delete")) { "verb" }
+            require(verb != "put" || value in FOLD_LOCK_VALUES) { "value" }
+            if (verb != "get") settings(verb, value)
+            putString("value", settings("get", null))
+            putBoolean("ok", true)
+        } catch (t: Throwable) {
+            putBoolean("ok", false)
+            putString("error", "${t.javaClass.simpleName}: ${t.message}")
+        }
+    }
+
+    private fun settings(verb: String, value: String?): String {
+        val args = mutableListOf("settings", verb, "system", "fold_lock_behavior")
+        if (value != null) args += value
+        val p = ProcessBuilder(args).redirectErrorStream(true).start()
+        val text = p.inputStream.bufferedReader().use { it.readText() }.trim()
+        if (p.waitFor() != 0) throw IllegalStateException(text)
+        return text
     }
 
     // ---- capture -----------------------------------------------------------
@@ -325,5 +360,6 @@ class DuoShellService : Binder() {
         /** Shizuku asks user services to exit with this code. */
         const val SHIZUKU_DESTROY = 16777115
         val FAMILIES = listOf("android.window.ScreenCaptureInternal", "android.window.ScreenCapture")
+        val FOLD_LOCK_VALUES = setOf("sleep_on_fold_key", "selective_stay_awake_key", "stay_awake_on_fold_key")
     }
 }

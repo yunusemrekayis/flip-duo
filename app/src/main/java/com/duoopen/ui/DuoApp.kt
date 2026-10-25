@@ -98,6 +98,8 @@ fun DuoApp(foldLineFlow: StateFlow<FoldLine?>, dualScreen: DualScreen? = null) {
     val shizukuStatus by OverlayFeature.shizukuStatus.collectAsStateWithLifecycle()
     LaunchedEffect(resumeTick) { OverlayFeature.refreshShizuku() }
     val foldWallpaper = remember(resumeTick) { OverlayFeature.foldWallpaperActive(context) }
+    var foldLock by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(resumeTick, shizukuStatus) { foldLock = withContext(Dispatchers.IO) { OverlayFeature.foldLockValue() } }
     val dualStatus by (dualScreen?.status ?: kotlinx.coroutines.flow.MutableStateFlow("")).collectAsStateWithLifecycle()
     val dualActive by (dualScreen?.active ?: kotlinx.coroutines.flow.MutableStateFlow(false)).collectAsStateWithLifecycle()
 
@@ -158,6 +160,14 @@ fun DuoApp(foldLineFlow: StateFlow<FoldLine?>, dualScreen: DualScreen? = null) {
                 onShizukuAuthorize = { OverlayFeature.requestShizuku() },
                 onOpenShizuku = { openShizuku(context) },
                 foldWallpaperActive = foldWallpaper,
+                foldLockValue = foldLock,
+                onKeepAppsOnFold = { on ->
+                    scope.launch {
+                        val ok = withContext(Dispatchers.IO) { OverlayFeature.setKeepAppsOnFold(context.applicationContext, on) }
+                        if (!ok) Toast.makeText(context, "Shizuku couldn't change the fold setting", Toast.LENGTH_SHORT).show()
+                        foldLock = withContext(Dispatchers.IO) { OverlayFeature.foldLockValue() }
+                    }
+                },
                 angleFeedStatus = { OverlayFeature.angleFeedStatus() },
                 onOpenWallpaperSettings = { openWallpaperSettings(context) },
                 dualActive = dualActive,
@@ -187,6 +197,7 @@ private fun isWallpaperActive(context: Context): Boolean =
 
 private fun openShizuku(context: Context) {
     val launch = context.packageManager.getLaunchIntentForPackage("moe.shizuku.privileged.api")
+        ?: context.packageManager.getLaunchIntentForPackage("af.shizuku.plus.api")
     val intent = launch ?: Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://shizuku.rikka.app/"))
     intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     if (runCatching { context.startActivity(intent) }.isFailure) {

@@ -155,6 +155,12 @@ object ShizukuBridge {
 
     fun ping(): Bundle? = call(ShellProtocol.PING)
 
+    /** Reads or changes Samsung's fold_lock_behavior through the shell helper. */
+    fun foldLock(verb: String, value: String? = null): Bundle? = call(ShellProtocol.FOLD_LOCK) { p ->
+        p.writeString(verb)
+        p.writeString(value)
+    }
+
     /** Blocking; call off the main thread. Null if unavailable or the frame had secure content. */
     fun capture(displayId: Int, excluded: List<SurfaceControl>, scale: Float): Bitmap? {
         val b = call(ShellProtocol.CAPTURE) { p ->

@@ -35,6 +35,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import com.duoopen.fold.HingeAngleSource
 import com.duoopen.settings.DuoConfig
+import com.duoopen.overlay.OverlayFeature
 import com.duoopen.settings.DuoSettings
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
@@ -73,6 +74,8 @@ fun ControlSheet(
     onShizukuAuthorize: () -> Unit,
     onOpenShizuku: () -> Unit,
     foldWallpaperActive: Boolean,
+    foldLockValue: String?,
+    onKeepAppsOnFold: (Boolean) -> Unit,
     angleFeedStatus: () -> String,
     onOpenWallpaperSettings: () -> Unit,
     onEnableOverlay: () -> Unit,
@@ -311,6 +314,19 @@ fun ControlSheet(
                     }
                     if (!foldWallpaperActive) {
                         TextButton(onClick = onOpenWallpaperSettings) { Text("Open wallpaper settings") }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    val keepOn = foldLockValue == OverlayFeature.STAY_AWAKE_ON_FOLD
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Keep apps on when folded (Samsung)", style = MaterialTheme.typography.titleSmall)
+                            Hint(
+                                "The phone doesn't lock when you fold it; the app you're in carries on on the cover screen. " +
+                                    "On a Flip the app must also be allowed in Settings → Advanced features → Labs → Apps allowed on cover screen. " +
+                                    "Samsung setting now: ${foldLockValue ?: "unknown"}. Turning this off restores your previous choice.",
+                            )
+                        }
+                        Switch(checked = keepOn, onCheckedChange = onKeepAppsOnFold, enabled = foldLockValue != null)
                     }
                 }
             }
